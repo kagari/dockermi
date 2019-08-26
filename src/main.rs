@@ -29,13 +29,14 @@ struct Cursor {
     column: usize,
 }
 
-fn docker_images_display<W: Write>(stdout: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: String, images: &Vec<DockerImage>) {
+fn docker_images_display<W: Write>(stdout: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: &str, images: &Vec<DockerImage>) {
     write!(stdout, "{}", clear::All); // 画面をクリア
-    write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)); // カーソルを移動
-    println!("    {}\r\n", tag);
-    for image in images.iter() {
+    write!(stdout, "{}", cursor::Goto(1, 1));
+    write!(stdout, "    {}\r\n", tag);
+    for image in images {
         write!(stdout, "[{}] {}\r\n", if image.delete_flug { "x" } else { " " }, image.display);
     }
+    write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)); // カーソルを移動
 }
 
 fn main() {
@@ -70,20 +71,29 @@ fn main() {
     let mut display_cursor = Cursor{ column: 0, row: 0};
 
     // docker imagesを表示
-    docker_images_display(&mut stdout, &display_cursor, images_vec_str.iter().next().unwrap().to_string(), &vec);
+    docker_images_display(&mut stdout, &display_cursor, images_vec_str[0], &vec);
 
     for c in stdin.events() {
         // docker imagesを表示
-        docker_images_display(&mut stdout, &display_cursor, images_vec_str.iter().next().unwrap().to_string(), &vec);
+        docker_images_display(&mut stdout, &display_cursor, images_vec_str[0], &vec);
 
         match c.unwrap() {
             Event::Key(Key::Char('\n')) => {
                 println!("hoge");
                 return;
             }
-            Event::Key(Key::Char('q')) => { return; },
-            Event::Key(Key::Char('j')) => { if display_cursor.row < images_vec_str.iter().count() { display_cursor.row += 1; } else {} },
-            Event::Key(Key::Char('k')) => { if display_cursor.row > 0 { display_cursor.row -= 1; } else {} },
+            Event::Key(Key::Char('q')) | Event::Key(Key::Ctrl('c')) => { return; }
+            Event::Key(Key::Char('j')) => {
+                if display_cursor.row < images_vec_str.iter().count() {
+                    display_cursor.row += 1;
+                } else { }}
+            Event::Key(Key::Char('k')) => {
+                if display_cursor.row > 0 {
+                    display_cursor.row -= 1;
+                } else { }}
+            Event::Key(Key::Char('x')) => {
+                vec[display_cursor.row - 1].delete_flug = true
+            }
             _ => {}
         }
         write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1));
