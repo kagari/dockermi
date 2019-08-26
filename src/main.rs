@@ -1,6 +1,3 @@
-// extern crate argparse;
-
-// use argparse::{ArgumentParser, StoreTrue, Store};
 use std::process::Command;
 
 #[derive(Debug)]
@@ -18,15 +15,21 @@ impl DockerImage {
     }
 }
 
+fn docker_images_display(tag: String, images: Vec<DockerImage>) {
+    println!("    {}", tag);
+    for image in images.iter() {
+        println!("[{}] {}", if image.delete_flug { "x" } else { " " }, image.display);
+    }
+}
+
 fn main() {
-    // まずは引数を取らずに、dockerのimageを見れるようにする。
+    // dockerのimagesを見れるようにする。
     let output = Command::new("docker")
                             .arg("images")
                             .output()
                             .expect("docker is not found");
     
     let images_str = String::from_utf8(output.stdout).unwrap(); // $ docker images のアウトプットを取得
-    // println!("output: \n{}", images_str);
 
     let images_vec_str: Vec<&str> = images_str.split("\n").collect(); // 個別のimageの情報に分割
     let images_vec = images_vec_str.iter().map(|x: &&str| -> Vec<&str> { x.split(" ").filter(|x| x != &"").collect::<Vec<&str>>() } ).collect::<Vec<Vec<&str>>>();
@@ -45,7 +48,5 @@ fn main() {
         let mut docker_image = DockerImage::new(images_vec_str.iter().nth(index+1).unwrap(), image_id);
         vec.push(docker_image)
     }
-    for i in vec.iter() {
-        println!("[{}] {}", if i.delete_flug { "x" } else { " " }, i.display);
-    }
+    docker_images_display(images_vec_str.iter().next().unwrap().to_string(), vec);
 }
