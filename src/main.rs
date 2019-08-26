@@ -84,7 +84,7 @@ fn main() {
             }
             Event::Key(Key::Char('q')) | Event::Key(Key::Ctrl('c')) => { return; }
             Event::Key(Key::Char('j')) => {
-                if display_cursor.row < images_vec_str.iter().count() {
+                if display_cursor.row < vec.len() + 1 {
                     display_cursor.row += 1;
                 } else { }}
             Event::Key(Key::Char('k')) => {
@@ -92,7 +92,9 @@ fn main() {
                     display_cursor.row -= 1;
                 } else { }}
             Event::Key(Key::Char('x')) => {
-                vec[display_cursor.row - 1].delete_flug = true
+                if 0 < display_cursor.row && display_cursor.row < vec.len() +1 {
+                    vec[display_cursor.row - 1].delete_flug = true;
+                }
             }
             _ => {}
         }
