@@ -1,3 +1,12 @@
+extern crate termion;
+
+use termion::event::{Key, Event};
+use termion::input::TermRead;
+use termion::raw::{IntoRawMode};
+use termion::clear;
+use termion::cursor;
+use std::io::{Write, stdout, stdin};
+use termion::screen::AlternateScreen;
 use std::process::Command;
 
 #[derive(Debug)]
@@ -15,10 +24,17 @@ impl DockerImage {
     }
 }
 
-fn docker_images_display(tag: String, images: Vec<DockerImage>) {
-    println!("    {}", tag);
+struct Cursor {
+    row: usize,
+    column: usize,
+}
+
+fn docker_images_display<W: Write>(stdout: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: String, images: &Vec<DockerImage>) {
+    write!(stdout, "{}", clear::All); // 画面をクリア
+    write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)); // カーソルを移動
+    println!("    {}\r\n", tag);
     for image in images.iter() {
-        println!("[{}] {}", if image.delete_flug { "x" } else { " " }, image.display);
+        write!(stdout, "[{}] {}\r\n", if image.delete_flug { "x" } else { " " }, image.display);
     }
 }
 
@@ -48,5 +64,29 @@ fn main() {
         let mut docker_image = DockerImage::new(images_vec_str.iter().nth(index+1).unwrap(), image_id);
         vec.push(docker_image)
     }
-    docker_images_display(images_vec_str.iter().next().unwrap().to_string(), vec);
+
+    let stdin = stdin();
+    let mut stdout = AlternateScreen::from(stdout().into_raw_mode().unwrap());
+    let mut display_cursor = Cursor{ column: 0, row: 0};
+
+    // docker imagesを表示
+    docker_images_display(&mut stdout, &display_cursor, images_vec_str.iter().next().unwrap().to_string(), &vec);
+
+    for c in stdin.events() {
+        // docker imagesを表示
+        docker_images_display(&mut stdout, &display_cursor, images_vec_str.iter().next().unwrap().to_string(), &vec);
+
+        match c.unwrap() {
+            Event::Key(Key::Char('\n')) => {
+                println!("hoge");
+                return;
+            }
+            Event::Key(Key::Char('q')) => { return; },
+            Event::Key(Key::Char('j')) => { if display_cursor.row < images_vec_str.iter().count() { display_cursor.row += 1; } else {} },
+            Event::Key(Key::Char('k')) => { if display_cursor.row > 0 { display_cursor.row -= 1; } else {} },
+            _ => {}
+        }
+        write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1));
+        stdout.flush().unwrap();
+    }
 }
