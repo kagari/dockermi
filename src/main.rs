@@ -51,18 +51,15 @@ fn main() {
     let images_vec_str: Vec<&str> = images_str.split("\n").collect(); // 個別のimageの情報に分割
     let images_vec = images_vec_str.iter().map(|x: &&str| -> Vec<&str> { x.split(" ").filter(|x| x != &"").collect::<Vec<&str>>() } ).collect::<Vec<Vec<&str>>>();
 
-    let mut images_iter = images_vec.iter();
-    images_iter.next(); // headerを取り除く処理
-
     let mut vec = Vec::new();
-    for (index, image_vec) in images_iter.enumerate() {
-        if image_vec.iter().count() == 0 {
+    for (index, image_vec) in images_vec[1..].iter().enumerate() {
+        if image_vec.len() == 0 {
             break;
         }
 
-        let image_id = image_vec.iter().nth(2).unwrap();
+        let image_id = image_vec[2];
 
-        let mut docker_image = DockerImage::new(images_vec_str.iter().nth(index+1).unwrap(), image_id);
+        let mut docker_image = DockerImage::new(images_vec_str[index+1], image_id);
         vec.push(docker_image)
     }
 
