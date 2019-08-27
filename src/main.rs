@@ -33,7 +33,7 @@ struct Cursor {
     column: usize,
 }
 
-fn docker_images_display<W: Write>(screen: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: &str, images: &Vec<DockerImage>) {
+fn display_docker_images<W: Write>(screen: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: &str, images: &Vec<DockerImage>) {
     let mut output = String::new();
     output += &format!("    {}\r\n", tag);
     for image in images {
@@ -46,31 +46,36 @@ fn docker_images_display<W: Write>(screen: &mut AlternateScreen<W>, display_curs
     screen.flush().unwrap();
 }
 
-fn main() {
+fn get_docker_images_info() -> (String, Vec<DockerImage>) {
     // dockerのimagesを見れるようにする。
     let output = Command::new("docker")
                             .arg("images")
                             .output()
                             .expect("docker is not found");
-    
-    let images_str = String::from_utf8(output.stdout).unwrap(); // $ docker images のアウトプットを取得
 
+    let images_str = String::from_utf8(output.stdout).unwrap(); // $ docker images のアウトプットを取得
     let images_vec_str: Vec<&str> = images_str.split("\n").collect(); // 個別のimageの情報に分割
     let images_vec = images_vec_str.iter()
                             .map(|x: &&str| -> Vec<&str> { x.split(" ").filter(|x| x != &"").collect::<Vec<&str>>() })
                             .collect::<Vec<Vec<&str>>>();
-
-    let mut vec = Vec::new();
-    for (index, image_vec) in images_vec[1..].iter().enumerate() {
-        if image_vec.len() == 0 {
+    
+    let tag = images_vec_str[0];
+    let mut docker_images = Vec::new();
+    for (index, image) in images_vec[1..].iter().enumerate() {
+        if image.len() == 0 {
             break;
         }
 
-        let image_id = image_vec[2];
+        let image_id = image[2];
 
-        let mut docker_image = DockerImage::new(images_vec_str[index+1], image_id);
-        vec.push(docker_image)
+        let docker_image = DockerImage::new(images_vec_str[index+1], image_id);
+        docker_images.push(docker_image)
     }
+    (tag.to_string(), docker_images)
+}
+
+fn main() {
+    let (tag, mut docker_images) = get_docker_images_info();
 
     let stdin = stdin();
     let mut screen = AlternateScreen::from(BufWriter::new(stdout()).into_raw_mode().unwrap());
@@ -78,7 +83,7 @@ fn main() {
     let mut display_cursor = Cursor{ column: 0, row: 0};
 
     // docker imagesを表示
-    docker_images_display(&mut screen, &display_cursor, images_vec_str[0], &vec);
+    display_docker_images(&mut screen, &display_cursor, &tag, &docker_images);
 
     let (tx, rx) = channel();
 
@@ -96,7 +101,7 @@ fn main() {
         if let Ok(evt) = rx.recv_timeout(Duration::from_millis(16)) {
             match evt {
                 Event::Key(Key::Char('\n')) => {
-                    let rm_images: Vec<&str> = vec.iter()
+                    let rm_images: Vec<&str> = docker_images.iter()
                                                 .filter(|x| x.delete_flug)
                                                 .map(|x| x.image_id.as_str())
                                                 .collect();
@@ -113,27 +118,27 @@ fn main() {
                 }
                 Event::Key(Key::Char('q')) | Event::Key(Key::Ctrl('c')) => { return; }
                 Event::Key(Key::Char('j')) => {
-                    if display_cursor.row < vec.len() + 1 {
+                    if display_cursor.row < docker_images.len() + 1 {
                         display_cursor.row += 1;
-                    } else { }}
+                    }}
                 Event::Key(Key::Char('k')) => {
                     if display_cursor.row > 0 {
                         display_cursor.row -= 1;
-                    } else { }}
+                    }}
                 Event::Key(Key::Char('x')) => {
-                    if 0 < display_cursor.row && display_cursor.row < vec.len() +1 {
-                        let delete_flug = vec[display_cursor.row - 1].delete_flug;
+                    if 0 < display_cursor.row && display_cursor.row < docker_images.len() +1 {
+                        let delete_flug = docker_images[display_cursor.row - 1].delete_flug;
                         if delete_flug {
-                            vec[display_cursor.row - 1].delete_flug = false;
+                            docker_images[display_cursor.row - 1].delete_flug = false;
                         } else {
-                            vec[display_cursor.row - 1].delete_flug = true;
+                            docker_images[display_cursor.row - 1].delete_flug = true;
                         }
                     }
                 }
                 _ => {}
             }
             // docker imagesを表示
-            docker_images_display(&mut screen, &display_cursor, images_vec_str[0], &vec);
+            display_docker_images(&mut screen, &display_cursor, &tag, &docker_images);
         }
         // 描画処理とか
         write!(screen, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)).unwrap();
