@@ -29,14 +29,14 @@ struct Cursor {
     column: usize,
 }
 
-fn docker_images_display<W: Write>(stdout: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: &str, images: &Vec<DockerImage>) {
-    write!(stdout, "{}", clear::All); // 画面をクリア
-    write!(stdout, "{}", cursor::Goto(1, 1));
-    write!(stdout, "    {}\r\n", tag);
+fn docker_images_display<W: Write>(screen: &mut AlternateScreen<W>, display_cursor: &Cursor, tag: &str, images: &Vec<DockerImage>) {
+    write!(screen, "{}", clear::All); // 画面をクリア
+    write!(screen, "{}", cursor::Goto(1, 1));
+    write!(screen, "    {}\r\n", tag);
     for image in images {
-        write!(stdout, "[{}] {}\r\n", if image.delete_flug { "x" } else { " " }, image.display);
+        write!(screen, "[{}] {}\r\n", if image.delete_flug { "x" } else { " " }, image.display);
     }
-    write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)); // カーソルを移動
+    write!(screen, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)); // カーソルを移動
 }
 
 fn main() {
@@ -64,15 +64,15 @@ fn main() {
     }
 
     let stdin = stdin();
-    let mut stdout = AlternateScreen::from(stdout().into_raw_mode().unwrap());
+    let mut screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
     let mut display_cursor = Cursor{ column: 0, row: 0};
 
     // docker imagesを表示
-    docker_images_display(&mut stdout, &display_cursor, images_vec_str[0], &vec);
+    docker_images_display(&mut screen, &display_cursor, images_vec_str[0], &vec);
 
     for c in stdin.events() {
         // docker imagesを表示
-        docker_images_display(&mut stdout, &display_cursor, images_vec_str[0], &vec);
+        docker_images_display(&mut screen, &display_cursor, images_vec_str[0], &vec);
 
         match c.unwrap() {
             Event::Key(Key::Char('\n')) => {
@@ -85,7 +85,7 @@ fn main() {
                 } else {
                     let output = Command::new("docker")
                                     .arg("rmi")
-                                    .args(rm_images)
+                                    .args(&rm_images)
                                     .output()
                                     .expect("");
                     return;
@@ -107,7 +107,7 @@ fn main() {
             }
             _ => {}
         }
-        write!(stdout, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1));
-        stdout.flush().unwrap();
+        write!(screen, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1));
+        screen.flush().unwrap();
     }
 }
