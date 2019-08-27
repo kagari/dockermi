@@ -79,7 +79,6 @@ fn main() {
 
     let stdin = stdin();
     let mut screen = AlternateScreen::from(BufWriter::new(stdout()).into_raw_mode().unwrap());
-    // let mut screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
     let mut display_cursor = Cursor{ column: 0, row: 0};
 
     // docker imagesを表示
@@ -87,7 +86,7 @@ fn main() {
 
     let (tx, rx) = channel();
 
-    // 入力は別スレッドで受け取りmpscに流す
+    // 入力を別スレッドで受け取りチャネルに流す
     thread::spawn(move || {
         for c in stdin.events() {
             if let Ok(evt) = c {
@@ -97,7 +96,7 @@ fn main() {
     });
 
     loop {
-        // 16ミリ秒でタイムアウト
+        // 16*10^(-3)[sec]でタイムアウトなので60fpsくらい
         if let Ok(evt) = rx.recv_timeout(Duration::from_millis(16)) {
             match evt {
                 Event::Key(Key::Char('\n')) => {
@@ -108,7 +107,7 @@ fn main() {
                     if rm_images.len() == 0 {
                         return;
                     } else {
-                        let output = Command::new("docker")
+                        let _output = Command::new("docker")
                                         .arg("rmi")
                                         .args(&rm_images)
                                         .output()
@@ -140,7 +139,6 @@ fn main() {
             // docker imagesを表示
             display_docker_images(&mut screen, &display_cursor, &tag, &docker_images);
         }
-        // 描画処理とか
         write!(screen, "{}", cursor::Goto(display_cursor.column as u16 + 1, display_cursor.row as u16 + 1)).unwrap();
         screen.flush().unwrap();
     }
