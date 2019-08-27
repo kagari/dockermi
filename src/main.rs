@@ -122,7 +122,12 @@ fn main() {
                     } else { }}
                 Event::Key(Key::Char('x')) => {
                     if 0 < display_cursor.row && display_cursor.row < vec.len() +1 {
-                        vec[display_cursor.row - 1].delete_flug = true;
+                        let delete_flug = vec[display_cursor.row - 1].delete_flug;
+                        if delete_flug {
+                            vec[display_cursor.row - 1].delete_flug = false;
+                        } else {
+                            vec[display_cursor.row - 1].delete_flug = true;
+                        }
                     }
                 }
                 _ => {}
