@@ -76,8 +76,20 @@ fn main() {
 
         match c.unwrap() {
             Event::Key(Key::Char('\n')) => {
-                println!("hoge");
-                return;
+                let rm_images: Vec<&str> = vec.iter()
+                                            .filter(|x| x.delete_flug)
+                                            .map(|x| x.image_id.as_str())
+                                            .collect();
+                if rm_images.len() == 0 {
+                    return;
+                } else {
+                    let output = Command::new("docker")
+                                    .arg("rmi")
+                                    .args(rm_images)
+                                    .output()
+                                    .expect("");
+                    return;
+                }
             }
             Event::Key(Key::Char('q')) | Event::Key(Key::Ctrl('c')) => { return; }
             Event::Key(Key::Char('j')) => {
